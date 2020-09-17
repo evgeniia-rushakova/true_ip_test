@@ -2,7 +2,7 @@
   "development": {
     "username": "admin",
     "password": "12345",
-    "database": "sequelize_passport",
+    "database": "rushakova",
     "host": "127.0.0.1",
     "dialect": "mysql"
   }

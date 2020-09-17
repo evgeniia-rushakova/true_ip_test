@@ -7,6 +7,7 @@ let Sequelize = require("sequelize");
 let env = process.env.NODE_ENV || "development";
 let config = require(path.join(__dirname, '..', 'config', 'config.json'))[env];
 let sequelize = new Sequelize(config.database, config.username, config.password, config);
+let csvSeparator = ';';
 let results = [];
 
 let createTable = (csvArr) => {
@@ -54,7 +55,7 @@ exports.index = function (req, res) {
         fs.createReadStream(req.file.path)
             .pipe(iconv.decodeStream("win1251"))
             .pipe(csv({
-                separator: ';'
+                separator: csvSeparator
             }))
             .on('data', (data) => {
                 results.push(data)
