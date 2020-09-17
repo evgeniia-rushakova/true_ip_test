@@ -9,8 +9,9 @@ let config = require(path.join(__dirname, '..', 'config', 'config.json'))[env];
 let sequelize = new Sequelize(config.database, config.username, config.password, config);
 let csvSeparator = ';';
 let results = [];
+let tableName = 'Employe';
 
-let createTable = (csvArr) => {
+let createTable = async (csvArr) => {
     if (csvArr) {
         let keys = Object.keys(csvArr[0]);
         let emptyModel = {
@@ -25,35 +26,43 @@ let createTable = (csvArr) => {
                 type: Sequelize.STRING,
             }
         })
-        let tableName = 'Employe';
-        let model = sequelize.define(tableName, emptyModel, {
-            indexes: [{
-                unique: true,
-                fields: keys.slice(1, 4) ///частный случай для этой таблицы
-            }]
-        });
-        model.sequelize.sync().then(function () {
-            console.log(`Table create succesfully`)
-        }).then(function () {
-            csvArr.forEach(function (item) {
-                Object.keys(item).forEach(function (key) {
-                    if (item[key] === '') {
-                        item[key] = null;
-                    }
-                })
-                model.create(item).catch(err => console.log(err))
+        let model = sequelize.define(tableName, emptyModel);
+        await model.sequelize.sync().catch(err => console(err));
+        let models = [];
+        csvArr.forEach(function (item) {
+            let keys = Object.keys(item);
+            keys.forEach(function (key) {
+                if (item[key] && item[key] === '') {
+                    item[key] = null;
+                }
             })
-        }).catch(function (err) {
-            console.log(err, "Something went wrong with the table")
-        });
-    }
+            let promise = new Promise(function (resolve, reject) {
+                (async () => {
+                    await model.findOne({where: {'логин': item['логин']}}).then((itemval) => {
+                        if (itemval == null)
+                            model.create(item).then(() => resolve()).catch(function (err) {
+                                reject(new Error(err))
+                            })
+                        else
+                            resolve()
+                    })
+                })();
+            })
+            models.push(promise);
+        })
+
+        return Promise.all(models).catch(function (err) {
+            throw new Error(`Something went wrong with the table\n ${err}`)
+        })
+    } else
+        return new Error("Invalid file!");
 }
 
 exports.index = function (req, res) {
-    if(req && req.file && req.file.path)
-    {
+    let type = req.file.originalname.split('.').pop();
+    if (req && req.file && req.file.path && type === 'csv') {
         fs.createReadStream(req.file.path)
-            .pipe(iconv.decodeStream("win1251"))
+            .pipe(iconv.decodeStream("win1251"))//this is only for files in windows 1251 encoding!!!
             .pipe(csv({
                 separator: csvSeparator
             }))
@@ -61,15 +70,19 @@ exports.index = function (req, res) {
                 results.push(data)
             })
             .on('end', () => {
-                createTable(results);
-                fs.unlink(req.file.path, (err) => {
-                    if (err) {
-                        console.error(err)
-                    }
+                createTable(results).then(() => {
+                    fs.unlink(req.file.path, (err) => {
+                        if (err) {
+                            console.error(err)
+                        }
+                    })
+                    res.render('resultofupload', {result: 'CSV upload succesfully.'})
+                }).catch((err) => {
+                    console.log(err);
+                    res.render('resultofupload', {result: `Error with file upload! Please, try again.\n ${err}`})
                 })
-                res.render('resultofupload',{result:'CSV upload succesfully.'})
+
             });
-    }
-    else
+    } else
         res.render('uploadpage');
 }
