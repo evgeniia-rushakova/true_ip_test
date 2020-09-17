@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Uploadpage</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+    <form role="form" action="/upload" enctype="multipart/form-data" method="post">
+        <label for="file">Please, choose file:</label>
+        <input type="file" id="file" accept=".csv" name="file">
+        <button type="submit">Upload</button>
+    </form>
+    <a href="/logout">logout</a>
+</div>
+</body>
+</html>
